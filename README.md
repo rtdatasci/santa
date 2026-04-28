@@ -31,7 +31,7 @@ Detects snoring, tracks sleep stages via motion, and logs your noise environment
 
 ---
 
-## Install on Android (Samsung Galaxy)
+## Install on Android
 
 1. Open the URL above in **Chrome**
 2. Tap the **three-dot menu → "Add to Home screen"**
