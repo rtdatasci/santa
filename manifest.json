@@ -1,0 +1,26 @@
+{
+  "name": "Santa — Sleep Tracker",
+  "short_name": "Santa",
+  "description": "Your personal sleep intelligence. Snore detection, sleep stages, noise environment.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#060a10",
+  "theme_color": "#060a10",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle"],
+  "screenshots": []
+}

@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#060a10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Santa">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>Santa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── TOKENS ── */
+    :root {
+      --bg:        #060a10;
+      --surface:   #0c1520;
+      --surface2:  #111d2e;
+      --border:    #1a2e45;
+      --accent:    #67e8f9;
+      --accent-lo: rgba(103,232,249,0.08);
+      --accent-md: rgba(103,232,249,0.18);
+      --text:      #c8e6f0;
+      --muted:     #3a6070;
+      --dim:       #1d3550;
+
+      --awake:  #ef4444;
+      --light:  #67e8f9;
+      --deep:   #3b82f6;
+      --rem:    #a78bfa;
+      --snore:  #fb923c;
+      --noise:  #a78bfa;
+    }
+
+    /* ── RESET ── */
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html { height: 100%; }
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      line-height: 1;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ── */
+    #app {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 430px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    /* ── STAR FIELD ── */
+    #starfield {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      animation: twinkle var(--d,3s) ease-in-out infinite var(--dl,0s);
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0.06; }
+      50% { opacity: var(--op, 0.7); }
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding-bottom: 82px; display: none;
+      position: relative; z-index: 1;
+    }
+    .screen.active { display: block; }
+    ::-webkit-scrollbar { width: 0; }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 54px 24px 12px;
+    }
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 34px;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    .logo em { color: var(--accent); font-style: normal; }
+    .tagline {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin: 0 16px 10px;
+      position: relative;
+    }
+    .card-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── SCORE CARD ── */
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .score-svg { width: 84px; height: 84px; flex-shrink: 0; }
+    .score-meta { flex: 1; }
+    .meta-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 7px;
+      color: var(--muted);
+    }
+    .meta-line span { color: var(--text); }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 0 16px 10px;
+    }
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .stat-box .lbl {
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-box .val {
+      font-size: 24px;
+      font-weight: 300;
+      line-height: 1;
+    }
+    .stat-box .unit { font-size: 12px; color: var(--muted); }
+
+    /* ── SECTION TITLE ── */
+    .sec-title {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 14px 24px 6px;
+    }
+
+    /* ── START BUTTON ── */
+    .start-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: calc(100% - 32px);
+      margin: 14px 16px 0;
+      padding: 20px;
+      background: none;
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.2s;
+    }
+    .start-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent-lo);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .start-btn:active::after { opacity: 1; }
+    .start-btn .ico { font-size: 18px; }
+
+    /* ── TIP ── */
+    .tip {
+      margin: 10px 16px;
+      padding: 12px 14px;
+      background: rgba(103,232,249,0.03);
+      border: 1px solid rgba(103,232,249,0.1);
+      border-radius: 12px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+    .tip strong { color: var(--accent); font-weight: 400; }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 56px 32px;
+    }
+    .empty .ico { font-size: 36px; margin-bottom: 14px; opacity: 0.35; }
+    .empty p { font-size: 12px; color: var(--muted); line-height: 1.8; }
+
+    /* ── BOTTOM NAV ── */
+    .nav {
+      position: fixed;
+      bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: rgba(6,10,16,0.92);
+      backdrop-filter: blur(24px) saturate(1.4);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+      z-index: 90;
+    }
+    .nav-btn {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      background: none; border: none;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+    .nav-btn .ico { font-size: 18px; line-height: 1; }
+    .nav-btn.active { color: var(--accent); }
+
+    /* ══════════════════════════════════
+       SLEEP OVERLAY
+    ══════════════════════════════════ */
+    #overlay {
+      position: fixed; inset: 0;
+      background: #020407;
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 430px;
+      margin: 0 auto;
+    }
+    #overlay.on { display: flex; }
+
+    /* Ambient glow behind clock */
+    #overlay::before {
+      content: '';
+      position: absolute;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(103,232,249,0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .ov-snore {
+      position: absolute;
+      top: 44px; right: 22px;
+      display: flex; align-items: center; gap: 8px;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .ov-snore.on { opacity: 1; }
+    .snore-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--snore);
+      animation: pulse 1s ease-out infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(251,146,60,0.6); }
+      100% { box-shadow: 0 0 0 10px rgba(251,146,60,0); }
+    }
+    .ov-snore-lbl { font-size: 10px; color: var(--snore); letter-spacing: 0.1em; }
+
+    .ov-motion {
+      position: absolute;
+      top: 44px; left: 22px;
+      font-size: 10px; color: rgba(58,96,112,0.6);
+      letter-spacing: 0.1em;
+    }
+
+    .ov-clock {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 76px;
+      letter-spacing: -3px;
+      color: rgba(103,232,249,0.55);
+      line-height: 1;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .ov-clock-sub {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(58,96,112,0.7);
+      margin-bottom: 36px;
+    }
+
+    #visualizer {
+      width: 180px; height: 52px;
+      display: block;
+      margin-bottom: 22px;
+    }
+
+    .ov-stage-label {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(58,96,112,0.6);
+      margin-bottom: 5px;
+    }
+    .ov-stage {
+      font-size: 14px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 36px;
+      min-height: 18px;
+    }
+
+    .stop-btn {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: 1px solid rgba(58,96,112,0.35);
+      background: rgba(12,21,32,0.6);
+      color: rgba(103,232,249,0.35);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .stop-btn:active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .ov-hint {
+      position: absolute;
+      bottom: 48px;
+      font-size: 9px;
+      color: rgba(58,96,112,0.45);
+      letter-spacing: 0.08em;
+      text-align: center;
+      padding: 0 36px;
+      line-height: 1.7;
+    }
+
+    /* ══════════════════════════════════
+       HYPNOGRAM
+    ══════════════════════════════════ */
+    .stage-legend {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .legend-dot {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; color: var(--muted);
+    }
+    .legend-dot::before {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 2px;
+      background: var(--c);
+      display: block;
+    }
+
+    canvas#hypnogram { width: 100%; display: block; }
+
+    /* ══════════════════════════════════
+       NOISE CHART
+    ══════════════════════════════════ */
+    .noise-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+    }
+    .noise-t { font-size: 10px; color: var(--muted); width: 34px; flex-shrink: 0; }
+    .noise-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .noise-fill { height: 100%; border-radius: 3px; }
+    .noise-db { font-size: 10px; color: var(--muted); width: 38px; text-align: right; }
+
+    /* ══════════════════════════════════
+       SNORE CLIPS
+    ══════════════════════════════════ */
+    .clip-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px;
+      background: var(--surface2);
+      border-radius: 10px;
+      margin: 0 16px 8px;
+    }
+    .clip-info { flex: 1; }
+    .clip-time { font-size: 11px; color: var(--muted); }
+    .clip-dur { font-size: 10px; color: var(--snore); margin-top: 3px; }
+    .play-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--snore);
+      background: none;
+      color: var(--snore);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .play-btn:active { background: rgba(251,146,60,0.15); }
+
+    /* ══════════════════════════════════
+       HISTORY LIST
+    ══════════════════════════════════ */
+    .hist-item {
+      display: flex; align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .hist-item:active { background: var(--surface); }
+    .hist-date-num { font-size: 24px; font-weight: 300; line-height: 1; }
+    .hist-date-mo {
+      font-size: 9px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .hist-info { flex: 1; }
+    .hist-dur { font-size: 14px; }
+    .hist-meta { font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .hist-score { font-size: 13px; color: var(--accent); }
+
+    /* ── UTILS ── */
+    .dots::after {
+      content: '';
+      animation: dotsAnim 1.4s steps(4, end) infinite;
+    }
+    @keyframes dotsAnim {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ── STAR FIELD ── -->
+<div id="starfield"></div>
+
+<div id="app">
+
+  <!-- ══════════════════════════════
+       SLEEP OVERLAY
+  ══════════════════════════════ -->
+  <div id="overlay">
+    <div class="ov-snore" id="ov-snore">
+      <div class="snore-dot"></div>
+      <span class="ov-snore-lbl">snoring</span>
+    </div>
+    <div class="ov-motion" id="ov-motion"></div>
+
+    <div class="ov-clock" id="ov-clock">0:00</div>
+    <div class="ov-clock-sub" id="ov-date"></div>
+
+    <canvas id="visualizer" width="180" height="52"></canvas>
+
+    <div class="ov-stage-label">Current Stage</div>
+    <div class="ov-stage" id="ov-stage"><span class="dots">Detecting</span></div>
+
+    <button class="stop-btn" id="stop-btn" title="End session">■</button>
+    <div class="ov-hint">Place phone face-down on nightstand · Keep plugged in</div>
+  </div>
+
+  <!-- ══════════════════════════════
+       HOME SCREEN
+  ══════════════════════════════ -->
+  <div class="screen active" id="s-home">
+    <div class="header">
+      <div class="logo">sant<em>a</em></div>
+      <div class="tagline">sleep intelligence</div>
+    </div>
+
+    <!-- Last night summary (shown after first session) -->
+    <div id="last-night" style="display:none">
+      <p class="sec-title">Last Night</p>
+      <div class="card">
+        <div class="score-row">
+          <svg class="score-svg" viewBox="0 0 84 84">
+            <circle cx="42" cy="42" r="36" fill="none" stroke="#1a2e45" stroke-width="4"/>
+            <circle id="arc" cx="42" cy="42" r="36" fill="none" stroke="#67e8f9"
+              stroke-width="4" stroke-linecap="round"
+              stroke-dasharray="226.2" stroke-dashoffset="226.2"
+              transform="rotate(-90 42 42)"
+              style="transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>
+            <text id="arc-val" x="42" y="47" text-anchor="middle"
+              font-family="DM Mono" font-size="17" font-weight="300"
+              fill="#c8e6f0">—</text>
+          </svg>
+          <div class="score-meta" id="home-meta">
+            <div class="meta-line">Duration <span id="h-dur">—</span></div>
+            <div class="meta-line">Snores <span id="h-snores">—</span></div>
+            <div class="meta-line">Avg noise <span id="h-noise">—</span></div>
+            <div class="meta-line">Deep sleep <span id="h-deep">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="no-data">
+      <div class="empty">
+        <div class="ico">🌙</div>
+        <p>No sleep data yet.<br>Start your first session tonight.</p>
+      </div>
+    </div>
+
+    <button class="start-btn" id="start-btn">
+      <span class="ico">🌙</span>
+      <span>Begin Sleep Session</span>
+    </button>
+
+    <div class="tip">
+      <strong>How to set up:</strong> Place your phone face-down on your nightstand within 1 metre of your head.
+      Keep it plugged in — Santa will keep the screen on to listen all night.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       REPORT SCREEN
+  ══════════════════════════════ -->
+  <div class="screen" id="s-report">
+    <div class="header">
+      <div class="logo" style="font-size:26px">sleep <em>report</em></div>
+    </div>
+
+    <div id="rep-empty" class="empty">
+      <div class="ico">📊</div>
+      <p>Complete a sleep session<br>to see your report here.</p>
+    </div>
+
+    <div id="rep-content" style="display:none">
+      <!-- Key stats -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="lbl">Sleep Score</div>
+          <div class="val" id="r-score" style="color:var(--accent)">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Total Sleep</div>
+          <div class="val" id="r-dur">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Snore Events</div>
+          <div class="val" id="r-snore" style="color:var(--snore)">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Avg Noise</div>
+          <div class="val" id="r-noise">—<span class="unit">dB</span></div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="lbl" style="color:var(--deep)">Deep Sleep</div>
+          <div class="val" id="r-deep">—<span class="unit">%</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl" style="color:var(--rem)">REM Sleep</div>
+          <div class="val" id="r-rem">—<span class="unit">%</span></div>
+        </div>
+      </div>
+
+      <!-- Hypnogram -->
+      <p class="sec-title">Sleep Stages</p>
+      <div class="card" style="padding:16px 12px">
+        <div class="stage-legend">
+          <div class="legend-dot" style="--c:var(--awake)">Awake</div>
+          <div class="legend-dot" style="--c:var(--light)">Light</div>
+          <div class="legend-dot" style="--c:var(--deep)">Deep</div>
+          <div class="legend-dot" style="--c:var(--rem)">REM</div>
+        </div>
+        <canvas id="hypnogram" height="130"></canvas>
+      </div>
+
+      <!-- Noise -->
+      <p class="sec-title">Noise Environment</p>
+      <div class="card" id="noise-wrap"></div>
+
+      <!-- Snore clips -->
+      <p class="sec-title">Snore Recordings</p>
+      <div id="snore-list"></div>
+      <div style="height:8px"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       HISTORY SCREEN
+  ══════════════════════════════ -->
+  <div class="screen" id="s-history">
+    <div class="header">
+      <div class="logo" style="font-size:26px">sleep <em>history</em></div>
+    </div>
+
+    <div id="hist-empty" class="empty">
+      <div class="ico">📅</div>
+      <p>Your sleep history will appear<br>here after your first session.</p>
+    </div>
+
+    <div id="hist-list"></div>
+  </div>
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="home">
+      <span class="ico">🌙</span><span>Home</span>
+    </button>
+    <button class="nav-btn" data-tab="report">
+      <span class="ico">📊</span><span>Report</span>
+    </button>
+    <button class="nav-btn" data-tab="history">
+      <span class="ico">📅</span><span>History</span>
+    </button>
+  </nav>
+
+</div><!-- #app -->
+
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════
+   DB — IndexedDB wrapper
+═══════════════════════════════════════════════════ */
+const DB = (() => {
+  let _db = null;
+
+  async function open() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('santa-v3', 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('sessions'))
+          db.createObjectStore('sessions', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('clips')) {
+          const cs = db.createObjectStore('clips', { keyPath: 'id', autoIncrement: true });
+          cs.createIndex('sid', 'sid');
+        }
+      };
+      req.onsuccess = e => { _db = e.target.result; res(); };
+      req.onerror = () => rej(req.error);
+    });
+  }
+
+  function tx(store, mode, fn) {
+    return new Promise((res, rej) => {
+      const t = _db.transaction(store, mode);
+      const s = t.objectStore(store);
+      const req = fn(s);
+      if (req) {
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      } else {
+        t.oncomplete = () => res();
+        t.onerror = () => rej(t.error);
+      }
+    });
+  }
+
+  return {
+    open,
+    saveSession: s  => tx('sessions', 'readwrite', st => st.put(s)),
+    getSessions: () => tx('sessions', 'readonly',  st => st.getAll()),
+    saveClip:    (sid, blob, ts) => tx('clips', 'readwrite', st => st.add({ sid, blob, ts })),
+    getClips:    sid => new Promise((res, rej) => {
+      const t = _db.transaction('clips', 'readonly');
+      const idx = t.objectStore('clips').index('sid');
+      const req = idx.getAll(sid);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    })
+  };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   MIC — Microphone, audio analysis, snore detection
+═══════════════════════════════════════════════════ */
+const Mic = (() => {
+  let actx, analyser, stream, recorder;
+  let snoreOn = false, snoreStart = 0, silTimer = null;
+  let rafId = null;
+  let chunks = [];
+
+  // Public callbacks
+  let onVolume = null;   // (rms, freqData)
+  let onSnore  = null;   // (blob, ts, durMs)
+
+  const SNORE_THRESH  = 95;   // 0–255 mean energy in snore band
+  const SNORE_MIN_MS  = 1500;
+  const SILENCE_MS    = 2500;
+
+  async function init(s) {
+    stream = s;
+    actx     = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = actx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.8;
+    actx.createMediaStreamSource(stream).connect(analyser);
+    _loop();
+  }
+
+  function _loop() {
+    const flen = analyser.frequencyBinCount;
+    const freq = new Uint8Array(flen);
+    const time = new Uint8Array(flen);
+    const hz   = actx.sampleRate / analyser.fftSize;
+    const sLow  = Math.floor(80  / hz);
+    const sHigh = Math.ceil(500  / hz);
+
+    const tick = () => {
+      rafId = requestAnimationFrame(tick);
+      analyser.getByteFrequencyData(freq);
+      analyser.getByteTimeDomainData(time);
+
+      // RMS → pseudo-dB
+      let sum = 0;
+      for (let i = 0; i < time.length; i++) {
+        const v = (time[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / time.length);
+      if (onVolume) onVolume(rms, freq);
+
+      // Snore band energy
+      let energy = 0;
+      for (let i = sLow; i <= sHigh && i < freq.length; i++) energy += freq[i];
+      energy /= (sHigh - sLow + 1);
+      _handleSnore(energy);
+    };
+    tick();
+  }
+
+  function _handleSnore(energy) {
+    const now = Date.now();
+    if (energy > SNORE_THRESH) {
+      if (!snoreOn) { snoreOn = true; snoreStart = now; _startRec(); }
+      if (silTimer) { clearTimeout(silTimer); silTimer = null; }
+    } else if (snoreOn && !silTimer) {
+      silTimer = setTimeout(() => {
+        const dur = Date.now() - snoreStart;
+        if (dur >= SNORE_MIN_MS) _stopRec(snoreStart, dur);
+        else _cancelRec();
+        snoreOn = false; silTimer = null;
+      }, SILENCE_MS);
+    }
+  }
+
+  function _startRec() {
+    if (!stream) return;
+    chunks = [];
+    try {
+      const opts = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? { mimeType: 'audio/webm;codecs=opus' } : {};
+      recorder = new MediaRecorder(stream, opts);
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.start(500);
+    } catch(e) { console.warn('MediaRecorder:', e); }
+  }
+
+  function _stopRec(ts, dur) {
+    if (!recorder || recorder.state === 'inactive') return;
+    recorder.stop();
+    setTimeout(() => {
+      if (chunks.length && onSnore) {
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        onSnore(blob, ts, dur);
+      }
+      chunks = [];
+    }, 700);
+  }
+
+  function _cancelRec() {
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    chunks = [];
+  }
+
+  function stop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    if (actx) actx.close();
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    snoreOn = false;
+    if (silTimer) { clearTimeout(silTimer); silTimer = null; }
+  }
+
+  return { init, stop, set onVolume(fn) { onVolume = fn; }, set onSnore(fn) { onSnore = fn; } };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   MOTION — DeviceMotion → sleep stage estimation
+═══════════════════════════════════════════════════ */
+const Motion = (() => {
+  let active = false;
+  let samples = [];
+  let epochs  = [];
+  let lastEpoch = 0;
+  let handler = null;
+  let onStage = null;
+  const EPOCH = 30000; // 30s
+
+  function start() {
+    active = true; samples = []; epochs = []; lastEpoch = Date.now();
+    handler = e => {
+      if (!active) return;
+      const g = e.accelerationIncludingGravity;
+      if (!g) return;
+      const x = g.x||0, y = g.y||0, z = g.z||0;
+      samples.push({ mag: Math.sqrt(x*x+y*y+z*z), t: Date.now() });
+      _checkEpoch();
+    };
+    window.addEventListener('devicemotion', handler);
+  }
+
+  function _checkEpoch() {
+    const now = Date.now();
+    if (now - lastEpoch < EPOCH) return;
+    const win = samples.filter(s => s.t >= lastEpoch);
+    if (win.length < 3) { lastEpoch = now; return; }
+    const G = 9.81;
+    const mad = win.reduce((sum, s) => sum + Math.abs(s.mag - G), 0) / win.length;
+    const stage = _classify(mad);
+    epochs.push({ t: now, stage, mad });
+    lastEpoch = now;
+    samples = samples.filter(s => s.t >= now - 90000);
+    if (onStage) onStage(stage);
+  }
+
+  function _classify(mad) {
+    if (mad > 0.28) return 'Awake';
+    // Check how long asleep (first non-Awake epoch)
+    const first = epochs.find(e => e.stage !== 'Awake');
+    const asleepMs = first ? Date.now() - first.t : 0;
+    if (mad > 0.08) {
+      // Light OR REM — REM increases after 90 min
+      if (asleepMs > 90 * 60000) {
+        const cyclePos = asleepMs % (90 * 60000);
+        if (cyclePos > 60 * 60000) return 'REM';
+      }
+      return 'Light';
+    }
+    return 'Deep';
+  }
+
+  function stop() {
+    active = false;
+    if (handler) window.removeEventListener('devicemotion', handler);
+  }
+
+  return {
+    start, stop,
+    getEpochs: () => [...epochs],
+    getCurrent: () => epochs.length ? epochs[epochs.length-1].stage : null,
+    set onStage(fn) { onStage = fn; }
+  };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   VIZ — Canvas bar waveform visualizer
+═══════════════════════════════════════════════════ */
+const Viz = (() => {
+  let canvas, ctx;
+  const history = new Array(45).fill(0);
+
+  function init() {
+    canvas = document.getElementById('visualizer');
+    ctx = canvas.getContext('2d');
+  }
+
+  function draw(rms) {
+    history.push(rms); history.shift();
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    const bw = W / history.length;
+    for (let i = 0; i < history.length; i++) {
+      const v = history[i];
+      const bh = Math.min(v * H * 9, H * 0.92);
+      const alpha = Math.min(0.15 + v * 6, 0.75);
+      ctx.fillStyle = `rgba(103,232,249,${alpha})`;
+      ctx.fillRect(i * bw, (H - bh) / 2, Math.max(bw - 1, 1), bh);
+    }
+  }
+
+  function clear() {
+    history.fill(0);
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  return { init, draw, clear };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   SESSION — Orchestrates active sleep session
+═══════════════════════════════════════════════════ */
+const Session = (() => {
+  let id, startTime, noiseLog, snoreEvents, wakeLock;
+  let timerIv, noiseIv;
+  let curDb = 0, active = false;
+
+  async function start() {
+    id = Date.now();
+    startTime = Date.now();
+    noiseLog = []; snoreEvents = []; active = true;
+
+    // Wake lock
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+
+    // Motion
+    Motion.start();
+    Motion.onStage = stage => UI.setStage(stage);
+
+    // Mic
+    Mic.onVolume = (rms, freqData) => {
+      curDb = Math.round(rms * 300); // rough scale
+      Viz.draw(rms);
+      UI.setMotion(Motion.getCurrent());
+    };
+    Mic.onSnore = async (blob, ts, dur) => {
+      const clipId = await DB.saveClip(id, blob, ts);
+      snoreEvents.push({ ts, dur, clipId });
+      UI.setSnore(true);
+      setTimeout(() => UI.setSnore(false), 3500);
+    };
+
+    // Noise log every 60s
+    noiseIv = setInterval(() => {
+      if (curDb > 0) noiseLog.push({ t: Date.now(), db: curDb });
+    }, 60000);
+
+    // Clock tick
+    timerIv = setInterval(() => UI.tickClock(), 1000);
+    UI.tickClock();
+  }
+
+  async function stop() {
+    if (!active) return null;
+    active = false;
+    clearInterval(timerIv);
+    clearInterval(noiseIv);
+    if (curDb > 0) noiseLog.push({ t: Date.now(), db: curDb });
+
+    Mic.stop();
+    Motion.stop();
+    try { if (wakeLock) await wakeLock.release(); } catch(e) {}
+
+    const session = {
+      id, startTime, endTime: Date.now(),
+      duration: Date.now() - startTime,
+      stages: Motion.getEpochs(),
+      noiseLog, snoreEvents
+    };
+    await DB.saveSession(session);
+    return session;
+  }
+
+  return { start, stop, getStartTime: () => startTime };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   REPORT — Score calculation & rendering
+═══════════════════════════════════════════════════ */
+const Report = (() => {
+
+  function score(s) {
+    let sc = 100;
+    const h = s.duration / 3600000;
+    if (h < 5) sc -= 25; else if (h < 6) sc -= 15; else if (h < 7) sc -= 8;
+    else if (h > 9.5) sc -= 5;
+    sc -= Math.min(s.snoreEvents.length * 3, 20);
+    const avgDb = s.noiseLog.length
+      ? s.noiseLog.reduce((a, n) => a + n.db, 0) / s.noiseLog.length : 35;
+    if (avgDb > 65) sc -= 12; else if (avgDb > 50) sc -= 6;
+    const st = s.stages;
+    if (st.length) {
+      const deepPct = st.filter(e => e.stage === 'Deep').length / st.length;
+      const remPct  = st.filter(e => e.stage === 'REM').length  / st.length;
+      if (deepPct > 0.18) sc += 5;
+      if (remPct  > 0.12) sc += 5;
+    }
+    return Math.max(0, Math.min(100, Math.round(sc)));
+  }
+
+  function fmtDur(ms) {
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return `${h}h ${m}m`;
+  }
+
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    return d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  }
+
+  function drawHypnogram(session) {
+    const canvas = document.getElementById('hypnogram');
+    const stages = session.stages;
+    const W = canvas.offsetWidth;
+    canvas.width = W;
+    const H = 130;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+
+    if (!stages || stages.length < 2) {
+      ctx.fillStyle = '#3a6070';
+      ctx.font = '11px DM Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('No motion data — place phone on mattress next time', W/2, H/2);
+      return;
+    }
+
+    const ORDER  = { 'Awake': 0, 'REM': 1, 'Light': 2, 'Deep': 3 };
+    const COLORS = { 'Awake':'#ef4444', 'REM':'#a78bfa', 'Light':'#67e8f9', 'Deep':'#3b82f6' };
+    const LABELS = ['Awake', 'REM', 'Light', 'Deep'];
+
+    const PL=52, PR=10, PT=6, PB=26;
+    const PW = W-PL-PR, PH = H-PT-PB;
+    const RH = PH / 4;
+
+    // Y-axis labels
+    ctx.font = '9px DM Mono'; ctx.textAlign = 'right'; ctx.fillStyle = '#3a6070';
+    LABELS.forEach((l, i) => ctx.fillText(l, PL-6, PT + i*RH + RH/2 + 3));
+
+    // Grid
+    ctx.strokeStyle = '#1a2e45'; ctx.lineWidth = 1;
+    for (let i=0; i<=4; i++) {
+      const y = PT + i*RH;
+      ctx.beginPath(); ctx.moveTo(PL, y); ctx.lineTo(W-PR, y); ctx.stroke();
+    }
+
+    const t0 = session.startTime;
+    const t1 = stages[stages.length-1].t;
+    const span = t1 - t0 || 1;
+    const toX  = t => PL + ((t - t0) / span) * PW;
+    const toY  = st => PT + ORDER[st] * RH;
+
+    // Draw blocks
+    for (let i=0; i<stages.length; i++) {
+      const ep = stages[i];
+      const x1 = toX(ep.t - 30000);
+      const x2 = i+1 < stages.length ? toX(stages[i+1].t - 30000) : W-PR;
+      const y  = toY(ep.stage);
+      ctx.fillStyle   = COLORS[ep.stage] + '28';
+      ctx.strokeStyle = COLORS[ep.stage];
+      ctx.lineWidth   = 1.5;
+      ctx.fillRect(x1, y, x2-x1, RH);
+      ctx.strokeRect(x1, y, x2-x1, RH);
+    }
+
+    // Time labels
+    const totalH = Math.ceil(span / 3600000);
+    ctx.fillStyle = '#3a6070'; ctx.font='9px DM Mono'; ctx.textAlign='center';
+    for (let h=0; h<=totalH; h++) {
+      const ms = h * 3600000;
+      if (ms > span) break;
+      const x = toX(t0 + ms);
+      const d = new Date(t0 + ms);
+      ctx.fillText(d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0'), x, H-6);
+    }
+  }
+
+  function renderNoise(wrap, noiseLog) {
+    if (!noiseLog || !noiseLog.length) {
+      wrap.innerHTML = '<div style="font-size:11px;color:#3a6070;text-align:center;padding:10px 0">No noise data recorded</div>';
+      return;
+    }
+    wrap.innerHTML = noiseLog.map(n => {
+      const d = new Date(n.t);
+      const lbl = d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+      const pct = Math.min((n.db / 80) * 100, 100);
+      const col = n.db < 35 ? '#3b82f6' : n.db < 55 ? '#a78bfa' : '#fb923c';
+      return `<div class="noise-row">
+        <div class="noise-t">${lbl}</div>
+        <div class="noise-track"><div class="noise-fill" style="width:${pct}%;background:${col}"></div></div>
+        <div class="noise-db">${n.db}</div>
+      </div>`;
+    }).join('');
+  }
+
+  async function renderSnores(session) {
+    const list = document.getElementById('snore-list');
+    const evs  = session.snoreEvents;
+    if (!evs || !evs.length) {
+      list.innerHTML = '<div style="font-size:11px;color:#3a6070;text-align:center;padding:8px 0 16px">No snoring detected 🎉</div>';
+      return;
+    }
+    const clips = await DB.getClips(session.id);
+    const cmap  = {};
+    clips.forEach(c => cmap[c.id] = c);
+
+    list.innerHTML = evs.map(ev => {
+      const clip = cmap[ev.clipId];
+      const dur  = ev.dur ? `${(ev.dur/1000).toFixed(1)}s` : '—';
+      return `<div class="clip-row">
+        <div class="clip-info">
+          <div class="clip-time">🔴 ${fmtTime(ev.ts)}</div>
+          <div class="clip-dur">${dur} duration</div>
+        </div>
+        ${clip ? `<button class="play-btn" data-id="${ev.clipId}">▶</button>` : ''}
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.play-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const clip = cmap[parseInt(btn.dataset.id)];
+        if (!clip) return;
+        const url = URL.createObjectURL(clip.blob);
+        const audio = new window.Audio(url);
+        btn.textContent = '■';
+        audio.play();
+        audio.onended = () => { btn.textContent = '▶'; URL.revokeObjectURL(url); };
+      });
+    });
+  }
+
+  async function render(session) {
+    if (!session) {
+      document.getElementById('rep-empty').style.display   = 'flex';
+      document.getElementById('rep-content').style.display = 'none';
+      return;
+    }
+    document.getElementById('rep-empty').style.display   = 'none';
+    document.getElementById('rep-content').style.display = 'block';
+
+    const sc  = score(session);
+    const st  = session.stages;
+    const avg = session.noiseLog.length
+      ? Math.round(session.noiseLog.reduce((a,n)=>a+n.db,0)/session.noiseLog.length) : null;
+
+    document.getElementById('r-score').textContent = sc;
+    document.getElementById('r-dur').textContent   = fmtDur(session.duration);
+    document.getElementById('r-snore').textContent = session.snoreEvents.length;
+    document.getElementById('r-noise').innerHTML   = avg !== null
+      ? `${avg}<span class="unit"> dB</span>` : '—';
+
+    if (st.length) {
+      const n = st.length;
+      const deepPct = Math.round(st.filter(e=>e.stage==='Deep').length/n*100);
+      const remPct  = Math.round(st.filter(e=>e.stage==='REM').length /n*100);
+      document.getElementById('r-deep').innerHTML = `${deepPct}<span class="unit">%</span>`;
+      document.getElementById('r-rem').innerHTML  = `${remPct}<span class="unit">%</span>`;
+    }
+
+    setTimeout(() => drawHypnogram(session), 80);
+    renderNoise(document.getElementById('noise-wrap'), session.noiseLog);
+    await renderSnores(session);
+  }
+
+  return { score, fmtDur, render };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   UI — Navigation and screen updates
+═══════════════════════════════════════════════════ */
+const UI = (() => {
+  function initStars() {
+    const sf = document.getElementById('starfield');
+    for (let i = 0; i < 70; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const big = Math.random() > 0.8;
+      s.style.cssText = `
+        left:${Math.random()*100}%;
+        top:${Math.random()*100}%;
+        width:${big?2:1}px; height:${big?2:1}px;
+        --op:${(Math.random()*0.5+0.3).toFixed(2)};
+        --d:${(2+Math.random()*5).toFixed(1)}s;
+        --dl:${(-Math.random()*5).toFixed(1)}s;
+      `;
+      sf.appendChild(s);
+    }
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('s-'+tab).classList.add('active');
+  }
+
+  function showOverlay() {
+    document.getElementById('overlay').classList.add('on');
+    const d = new Date();
+    document.getElementById('ov-date').textContent =
+      d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
+  }
+
+  function hideOverlay() {
+    document.getElementById('overlay').classList.remove('on');
+    Viz.clear();
+  }
+
+  function tickClock() {
+    const el = document.getElementById('ov-clock');
+    const st = Session.getStartTime();
+    if (!st) return;
+    const ms = Date.now() - st;
+    const h  = Math.floor(ms / 3600000);
+    const m  = Math.floor((ms % 3600000) / 60000);
+    const s  = Math.floor((ms % 60000) / 1000);
+    el.textContent = (h > 0 ? h + ':' : '') +
+      String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+
+  function setStage(stage) {
+    const el = document.getElementById('ov-stage');
+    const c  = { Awake:'#ef4444', Light:'#67e8f9', Deep:'#3b82f6', REM:'#a78bfa' };
+    el.innerHTML  = stage ? stage.toLowerCase() : '<span class="dots">Detecting</span>';
+    el.style.color = stage ? (c[stage]||'#67e8f9') : '';
+  }
+
+  function setMotion(stage) {
+    const el = document.getElementById('ov-motion');
+    el.textContent = stage ? '◦ ' + stage.toLowerCase() : '';
+  }
+
+  function setSnore(on) {
+    document.getElementById('ov-snore').classList.toggle('on', on);
+  }
+
+  async function refreshHome() {
+    const sessions = await DB.getSessions();
+    sessions.sort((a,b) => b.startTime - a.startTime);
+
+    if (!sessions.length) {
+      document.getElementById('no-data').style.display    = 'block';
+      document.getElementById('last-night').style.display = 'none';
+      return;
+    }
+    document.getElementById('no-data').style.display    = 'none';
+    document.getElementById('last-night').style.display = 'block';
+
+    const s  = sessions[0];
+    const sc = Report.score(s);
+    const circ = 226.2;
+    document.getElementById('arc').style.strokeDashoffset = circ - (sc/100)*circ;
+    document.getElementById('arc-val').textContent = sc;
+
+    const st  = s.stages;
+    const avg = s.noiseLog.length
+      ? Math.round(s.noiseLog.reduce((a,n)=>a+n.db,0)/s.noiseLog.length) + ' dB' : 'quiet';
+    const deepPct = st.length
+      ? Math.round(st.filter(e=>e.stage==='Deep').length/st.length*100) + '%' : '—';
+
+    document.getElementById('h-dur').textContent    = Report.fmtDur(s.duration);
+    document.getElementById('h-snores').textContent = s.snoreEvents.length + ' events';
+    document.getElementById('h-noise').textContent  = avg;
+    document.getElementById('h-deep').textContent   = deepPct;
+  }
+
+  async function refreshHistory() {
+    const sessions = await DB.getSessions();
+    sessions.sort((a,b) => b.startTime - a.startTime);
+    const listEl = document.getElementById('hist-list');
+
+    if (!sessions.length) {
+      document.getElementById('hist-empty').style.display = 'flex';
+      listEl.innerHTML = '';
+      return;
+    }
+    document.getElementById('hist-empty').style.display = 'none';
+
+    listEl.innerHTML = sessions.map(s => {
+      const d  = new Date(s.startTime);
+      const sc = Report.score(s);
+      const avg = s.noiseLog.length
+        ? Math.round(s.noiseLog.reduce((a,n)=>a+n.db,0)/s.noiseLog.length) + ' dB avg'
+        : 'quiet night';
+      return `<div class="hist-item" data-id="${s.id}">
+        <div>
+          <div class="hist-date-num">${d.getDate()}</div>
+          <div class="hist-date-mo">${d.toLocaleString('en-US',{month:'short'})}</div>
+        </div>
+        <div class="hist-info">
+          <div class="hist-dur">${Report.fmtDur(s.duration)}</div>
+          <div class="hist-meta">${s.snoreEvents.length} snore · ${avg}</div>
+        </div>
+        <div class="hist-score">${sc}</div>
+      </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.hist-item').forEach(row => {
+      row.addEventListener('click', async () => {
+        const s = sessions.find(x => x.id === parseInt(row.dataset.id));
+        if (s) { await Report.render(s); showTab('report'); }
+      });
+    });
+  }
+
+  return {
+    initStars, showTab, showOverlay, hideOverlay,
+    tickClock, setStage, setMotion, setSnore,
+    refreshHome, refreshHistory
+  };
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   APP — Entry point
+═══════════════════════════════════════════════════ */
+const App = {
+  async init() {
+    await DB.open();
+    UI.initStars();
+    Viz.init();
+
+    // Nav tabs
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => UI.showTab(btn.dataset.tab));
+    });
+
+    // Start
+    document.getElementById('start-btn').addEventListener('click', () => this.startSession());
+
+    // Stop
+    document.getElementById('stop-btn').addEventListener('click', () => this.stopSession());
+
+    // Load data
+    await UI.refreshHome();
+    const sessions = await DB.getSessions();
+    sessions.sort((a,b) => b.startTime - a.startTime);
+    if (sessions.length) await Report.render(sessions[0]);
+
+    // Service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  },
+
+  async startSession() {
+    // Request microphone
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch(e) {
+      alert('Microphone access is required for sleep tracking.\n\nTap OK, then allow microphone access when prompted.');
+      return;
+    }
+
+    await Mic.init(stream);
+    await Session.start();
+    UI.showOverlay();
+  },
+
+  async stopSession() {
+    const session = await Session.stop();
+    UI.hideOverlay();
+    if (session) {
+      await Report.render(session);
+      await UI.refreshHome();
+      await UI.refreshHistory();
+      UI.showTab('report');
+    }
+  }
+};
+
+App.init().catch(console.error);
+</script>
+</body>
+</html>
